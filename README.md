@@ -2,7 +2,6 @@
 
 Team Members:
 Daniel Foland - dafoland@pdx.edu
-Lyle Hubbar - lhubbard@pdx.edu (tentative)
 
 # Project Scope
 This project automates pulling and processing of an FEC dataset: https://www.fec.gov/data/browse-data/?tab=bulk-data
