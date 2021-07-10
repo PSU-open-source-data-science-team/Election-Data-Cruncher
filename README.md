@@ -1,4 +1,4 @@
-# Election-Data-Visualizer
+# Election-Data-Cruncher
 
 Team Members:
 Daniel Foland - dafoland@pdx.edu
