@@ -7,6 +7,7 @@ class Neo4jAPIException(Exception):
     '''
     Generic Exception class for the Neo4jDB API class
     '''
+
     def __init__(self, *args):
         if args:
             self.message = args[0]
@@ -26,6 +27,7 @@ class Neo4jDB:
     login credentials, and query functions to pull information from
     the neo4j container (set up in the db_docker child class)
     '''
+
     def __init__(self, ip="127.0.0.1", bolt=7687, http=7475):
         # set to localhost
         self.ip = ip
@@ -66,7 +68,7 @@ class Neo4jDB:
                 ret = session.run(cmd)
                 tx.commit()
                 return ret
-            except CypherError as ex:
+            except CypherError:
                 print(f"Cypher command failed: {cmd}")
                 raise Neo4jAPIException("Neo4j run_query failure.")
             except Exception as ex:
@@ -75,7 +77,7 @@ class Neo4jDB:
                 try:
                     # database in possibly corrupt state, rollback
                     tx.rollback()
-                except:
+                except Exception:
                     # unable to rollback, just continue
                     pass
                 raise Neo4jAPIException("Neo4j run_query failure.")
@@ -97,16 +99,64 @@ class Neo4jDB:
             raise Neo4jAPIException("Neo4j create_node failure: %s" % command)
 
     def create_relationship_by_id(self, source_id, destination_id, rel):
-        # TODO create relationship between two nodes with matching ID's
-        pass
+        '''
+        Match ID's of two different nodes, and create a new relationship
+        between them
+        :param source_id: ID of parent
+        :param destination_id: ID of child
+        :param rel: name of relationship
+        :return: None
+        '''
+        command = 'MATCH (n) ' \
+                  'WHERE ID(n) = %d ' \
+                  'MATCH (m) ' \
+                  'WHERE ID(m) = %d ' \
+                  'CREATE (n) - [:%s] -> (m) ' \
+                  'return n' % (source_id, destination_id, rel)
+        self.run_query(command)
 
-    def get_node_by_name(self, name):
-        # TODO run query matching name, return ID
-        pass
+    def get_node_id_by_name(self, name):
+        '''
+        Match a name property on a node and return its ID
+        :param name: Name property of node
+        :return: neo4j ID of matching node
+        '''
+        command = "MATCH (n {Name:'%s'}) return ID(n)" % name
+        result = self.run_query(command)
+        try:
+            return result.data()[0]['ID(n)']
+        except Exception:
+            print("Command: %s" % command)
+            raise Neo4jAPIException("Neo4j "
+                                    "get_node_id_by_name failed")
 
-    def create_node_with_rel_to_id(self, label, properties, relationship, id):
-        # TODO create new node with relationship to node with ID
-        pass
-
-
-
+    def create_node_with_rel_to_id(self, label, properties, relationship, id,
+                                   forward=True):
+        '''
+        Create a new node and relationship to an existing node with matching id
+        :param label: label of new node
+        :param properties: properties of new node
+        :param relationship: relationship label
+        :param id: id of existing node to match
+        :param forward: boolean directionality node from n to m
+        :return: neo4j ID of node created
+        '''
+        # match ID
+        command = "MATCH (n) " \
+                  "WHERE ID(n) = %d " \
+                  "CREATE (n) " % id
+        # create relationship and direction
+        if forward:
+            command += "- [:%s] -> " % relationship
+        else:
+            command += "<- [:%s] - " % relationship
+        # create node with label and properties
+        command += "(m:%s {%s}) " \
+                   "RETURN ID(m)" % (label, properties)
+        result = self.run_query(command)
+        try:
+            return result.data()[0]['ID(m)']
+        except Exception:
+            print("Command: %s" % command)
+            raise Neo4jAPIException("Neo4j "
+                                    "create_node_with_rel_to_id failed")
