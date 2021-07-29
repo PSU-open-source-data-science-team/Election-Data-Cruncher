@@ -5,15 +5,21 @@ import time
 
 
 class Neo4jDockerDB(Neo4jDB):
-    #TODO child class for launch docker DB
-    # set up ports and driver from super() ?
-
     def start(self, kwargs={}):
+        '''
+        Start container and keep reference
+        :param kwargs: bash arguments to start container
+        :return:
+        '''
         container = self.client.containers.run(**kwargs, detach=True)
         # store reference for destructor
         self.container = container
 
     def stop(self):
+        '''
+        Stop container and wait for it to be stopped before closing connection
+        :return:
+        '''
         self.container.stop()
         maxtime = 20
         # wait for container to stop
@@ -23,5 +29,8 @@ class Neo4jDockerDB(Neo4jDB):
         self.client.close()
 
     def __del__(self):
+        '''
+        Automatically stop container with destructor
+        :return:
+        '''
         self.stop()
-

@@ -8,8 +8,11 @@ from os.path import basename
 # main script
 
 def main():
+    # files from FEC website
     stream_file("./FEC_Election_Data",
-                "https://www.fec.gov/files/bulk-downloads/2022/candidate_summary_2022.csv")
+                "https://www.fec.gov/files/bulk-downloads/2022/"
+                "candidate_summary_2022.csv")
+
 
 
 def stream_file(folder, url):
@@ -24,6 +27,8 @@ def stream_file(folder, url):
     print("Using file path: ", os.path.abspath(file_path))
 
     # write stream code
+    # Adapted from: stackoverflow.com/questions/56950987/
+    # License CC BY-SA 4.0
     r = requests.get(url, stream=True)
     if r.ok:
         with open(file_path, 'wb') as f:
