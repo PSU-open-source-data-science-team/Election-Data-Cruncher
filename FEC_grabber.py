@@ -7,24 +7,23 @@ from urllib.request import urlopen
 from os.path import basename
 # main script
 
-def main():
-    # files from FEC website
-    stream_file("./FEC_Election_Data",
-                "https://www.fec.gov/files/bulk-downloads/2022/"
-                "candidate_summary_2022.csv")
-
-
 
 def stream_file(folder, url):
+    '''
+    create a new folder and download input file to that folder
+    :param folder: fullpath to directory to create
+    :param url: url to download
+    :return: basename file without extension
+    '''
     if not os.path.exists(folder):
         os.makedirs(folder)
     else:
-        print("Folder already exists ({folder}), exiting.")
-        exit()
+        print(f"Data folder already exists ({folder}), skipping download.")
+        return
 
     response = urlopen(url)
     file_path = os.path.join(folder, basename(response.url))
-    print("Using file path: ", os.path.abspath(file_path))
+    print("Downloading file to: ", os.path.abspath(file_path))
 
     # write stream code
     # Adapted from: stackoverflow.com/questions/56950987/
@@ -40,3 +39,4 @@ def stream_file(folder, url):
     else:  # HTTP status code 4XX/5XX
         print("Download failed: status code {}\n{}".format(r.status_code,
                                                            r.text))
+    return os.path.splitext(basename(response.url))[0]
