@@ -1,5 +1,20 @@
-##!/usr/bin/python
-import sys
-import re
+#!/usr/bin/env python
+import FEC_grabber
+import db_docker
+import requests
 
-# main script
+def main():
+    # download the FEC data files to local dir: ./FEC_Election_Data
+    FEC_grabber.main()
+
+    # start docker instance
+    kwargs = {"name": "testneo4j",
+              "ports": {"7687/tcp": "7687", "7474/tcp": "7474"},
+              "environment": ["NEO4J_AUTH=neo4j/test"],
+              "remove": True,
+              "image": "neo4j:3.5.17"}
+    db_docker.Neo4jDockerDB(kwargs)
+
+
+if __name__ == '__main__':
+    main()

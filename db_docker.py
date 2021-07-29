@@ -8,14 +8,7 @@ class Neo4jDockerDB(Neo4jDB):
     #TODO child class for launch docker DB
     # set up ports and driver from super() ?
 
-    def start(self):
-        # run with bash command
-        kwargs = {"name": "testneo4j",
-                  "ports": {"7687/tcp": "7687", "7474/tcp": "7474"},
-                  "environment": ["NEO4J_AUTH=neo4j/test"],
-                  "remove": True,
-                  "image": "neo4j:3.5.17"}
-
+    def start(self, kwargs={}):
         container = self.client.containers.run(**kwargs, detach=True)
         # store reference for destructor
         self.container = container
