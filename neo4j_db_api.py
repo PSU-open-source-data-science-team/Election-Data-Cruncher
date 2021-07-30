@@ -37,6 +37,7 @@ class Neo4jDB:
         self.http = http
         # start database driver with default password
         pw = os.environ.get("NEO4J_PASSWORD") or "test"
+        print("Initializing neo4j connection driver...")
         # create db connector
         self.driver = GraphDatabase.driver(
             "bolt://%s:%d/" % (self.ip, self.bolt),

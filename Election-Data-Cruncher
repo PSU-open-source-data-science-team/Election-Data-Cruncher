@@ -1,11 +1,38 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from FEC_grabber import stream_file
 import db_docker
 import requests
 import os
+from zipfile import ZipFile
+import csv
 
 
 def main():
+    # dir to store files
+    dir = "./FEC_Election_Data"
+    # files to download
+    download_files = \
+        ['https://www.fec.gov/files/bulk-downloads/2022/weball22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/cn22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/ccl22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/webl22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/cm22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/webk22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/indiv22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/pas222.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/oth22.zip',
+         'https://www.fec.gov/files/bulk-downloads/2022/oppexp22.zip']
+    # naming convention to split names on, so header can match data file
+    # e.g. cm22 corresponds to cm_header_file
+    split_number = "22"
+    header_url = 'https://www.fec.gov/files/bulk-downloads/data_dictionaries/'
+    header_files = ['cn_header_file.csv',
+                    'ccl_header_file.csv',
+                    'cm_header_file.csv',
+                    'indiv_header_file.csv',
+                    'pas2_header_file.csv',
+                    'oth_header_file.csv',
+                    'oppexp_header_file.csv']
     # start docker instance
     neo4j_docker_db = db_docker.Neo4jDockerDB()
 
@@ -17,10 +44,65 @@ def main():
         id = neo4j_docker_db.create_node("Imported", f"Name:'Imported'")
 
     # download the FEC data files to local dir: ./FEC_Election_Data
-    file = stream_file("./FEC_Election_Data",
-                       "https://www.fec.gov/files/bulk-downloads/2022/"
-                       "candidate_summary_2022.csv")
-    
+    for file in download_files:
+        # download the file if it doesnt exist
+        zipped_file = stream_file(dir, file)
+        if zipped_file is not None:
+            with ZipFile(zipped_file, 'r') as zipObj:
+                # extract zipped file to same dir
+                zipObj.extractall(path=dir)
+
+    for file in header_files:
+        stream_file(dir, header_url + file)
+
+    main_data = {}
+    for file in download_files:
+        base = os.path.basename(file).split(split_number)[0]
+        basedir = dir + "/" + base
+        # check if header file exists using established naming convention
+        hfile = basedir + "_header_file.csv"
+        dfile = basedir + ".txt"
+        print(f"Opening FEC file ({dfile}) and importing to neo4j.")
+
+        if os.path.exists(os.path.abspath(hfile)):
+            fields = None
+            with open(hfile, 'r') as csvfile:
+                # creating a csv reader object
+                csvreader = csv.reader(csvfile)
+                fields = next(csvreader)
+            with open(dfile, 'r') as datafile:
+                lines = datafile.readlines()
+                for line in lines:
+                    data = line.split("|")
+                    if len(fields) != len(data):
+                        raise IOError(f"Data import lenth mismatch between:\n"
+                                      f"{data}\nand\n{fields}")
+                    print(line)
+            main_data.update(fec_data_to_dict(data, fields, base))
+        else:
+            raise Exception(f"Header file not found: {hfile}")
+
+
+def fec_data_to_dict(data, header, base):
+    '''
+    Organize data into dict to determine which kind of nodes to create
+    :param data: array of data
+    :param base: name to determine which kind of data is being imported
+    :return: dict of dicts with organized metadata
+    '''
+    out = {}
+    pointer = None
+    # all candidates file - summary financial information for each candidate
+    if base == "weball":
+        out['all candidates'] = {}
+        pointer = out['all candidates']
+    # candidate master file - summary financial information for each candidate
+    if base == "cn":
+        out['candidate master'] = {}
+        pointer = out['candidate master']
+    else:
+        raise Exception(f"Unable to determine FEC file type: {base}")
+
 
 if __name__ == '__main__':
     main()

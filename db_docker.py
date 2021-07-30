@@ -6,6 +6,10 @@ from requests import exceptions
 
 
 class Neo4jDockerDB(Neo4jDB):
+    '''
+    This child class is used to create a neo4j container and make its resources
+    available to the api class
+    '''
     def __init__(self):
         # keep container alive when script is completed
         self.persist = True
