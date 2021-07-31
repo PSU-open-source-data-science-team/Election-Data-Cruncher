@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from FEC_grabber import stream_file
+from FEC_grabber import stream_file, copy_headers
 import db_docker
 import requests
 import os
@@ -33,15 +33,6 @@ def main():
                     'pas2_header_file.csv',
                     'oth_header_file.csv',
                     'oppexp_header_file.csv']
-    # start docker instance
-    neo4j_docker_db = db_docker.Neo4jDockerDB()
-
-    # create a node to store which files have been imported
-    id = None
-    try:
-        id = neo4j_docker_db.get_node_id_by_name("Imported", "Imported")
-    except db_docker.Neo4jAPIException:
-        id = neo4j_docker_db.create_node("Imported", f"Name:'Imported'")
 
     # download the FEC data files to local dir: ./FEC_Election_Data
     for file in download_files:
@@ -52,17 +43,38 @@ def main():
                 # extract zipped file to same dir
                 zipObj.extractall(path=dir)
 
+    # copy custom headers to new dir
+    copy_headers('./FEC_header_repo', dir)
+
+    # download header files
     for file in header_files:
         stream_file(dir, header_url + file)
 
+    # convert data
+    main_data = files_to_data(download_files, split_number, dir)
+
+    # start docker instance
+    neo4j_docker_db = db_docker.Neo4jDockerDB()
+    # create a node to store which files have been imported
+    id = None
+    try:
+        id = neo4j_docker_db.get_node_id_by_name("Imported", "Imported")
+    except db_docker.Neo4jAPIException:
+        id = neo4j_docker_db.create_node("Imported", f"Name:'Imported'")
+
+
+def files_to_data(download_files, split_number, dir):
     main_data = {}
     for file in download_files:
-        base = os.path.basename(file).split(split_number)[0]
+        base = os.path.basename(file).rsplit(split_number)[0]
+        # handle individual contributions
+        if base == 'indiv':
+            continue
         basedir = dir + "/" + base
         # check if header file exists using established naming convention
         hfile = basedir + "_header_file.csv"
         dfile = basedir + ".txt"
-        print(f"Opening FEC file ({dfile}) and importing to neo4j.")
+        print(f"Opening FEC file ({dfile}) and storing data..")
 
         if os.path.exists(os.path.abspath(hfile)):
             fields = None
@@ -70,23 +82,40 @@ def main():
                 # creating a csv reader object
                 csvreader = csv.reader(csvfile)
                 fields = next(csvreader)
+            # corner case for non-standard FEC naming convention
+            if not os.path.exists(dfile):
+                dfile = basedir + f"{split_number}.txt"
+            if not os.path.exists(dfile):
+                dfile = dir + "/it" + f"{base}.txt"
             with open(dfile, 'r') as datafile:
                 lines = datafile.readlines()
+                data = []
                 for line in lines:
-                    data = line.split("|")
-                    if len(fields) != len(data):
-                        raise IOError(f"Data import lenth mismatch between:\n"
-                                      f"{data}\nand\n{fields}")
-                    print(line)
+                    # badly formatted file correction, remove last |
+                    if base == "oppexp":
+                        line = line.rstrip()[:-1]
+                    data_count = len(line.rstrip().split("|"))
+                    flen = len(fields)
+                    if len(fields) != data_count:
+                        print(line)
+                        print(fields)
+                        raise IOError(f"Data import lenth mismatch "
+                                      f"({data_count} vs {flen}) between:\n"
+                                      f"{line}\nand\n{fields}")
+                    line = line.replace('|', ',')
+                    data.append(line)
             main_data.update(fec_data_to_dict(data, fields, base))
         else:
             raise Exception(f"Header file not found: {hfile}")
+    return main_data
+
+
 
 
 def fec_data_to_dict(data, header, base):
     '''
     Organize data into dict to determine which kind of nodes to create
-    :param data: array of data
+    :param data: array of data corresponding to a single line
     :param base: name to determine which kind of data is being imported
     :return: dict of dicts with organized metadata
     '''
@@ -97,12 +126,48 @@ def fec_data_to_dict(data, header, base):
         out['all candidates'] = {}
         pointer = out['all candidates']
     # candidate master file - summary financial information for each candidate
-    if base == "cn":
+    elif base == "cn":
         out['candidate master'] = {}
         pointer = out['candidate master']
+    # link between candidate info to info about their committee
+    elif base == "ccl":
+        out['candidate committee linkage'] = {}
+        pointer = out['candidate committee linkage']
+    # summary financial information for each campaign committee
+    elif base == "webl":
+        out['current campaigns'] = {}
+        pointer = out['current campaigns']
+    # one record for each committee registered with the FEC
+    elif base == "cm":
+        out['committee master'] = {}
+        pointer = out['committee master']
+    # overall receipts and disbursements for each PAC and party committee
+    elif base == "webk":
+        out['pac summary'] = {}
+        pointer = out['pac summary']
+    # expenditure made by a PAC, party committee, candidate committee,
+    # or other federal committee
+    elif base == "pas2":
+        out['contributions'] = {}
+        pointer = out['contributions']
+    # transactions between committees
+    elif base == "oth":
+        out['intercommittee transactions'] = {}
+        pointer = out['intercommittee transactions']
+    # reported FEC disbursements
+    elif base == "oppexp":
+        out['operating expenditures'] = {}
+        pointer = out['operating expenditures']
     else:
         raise Exception(f"Unable to determine FEC file type: {base}")
 
+    # process array of lines into dicts that will be later converted to nodes
+    for line in data:
+        node = {}
+        for count, key in enumerate(header):
+            node[key] = line[count]
+        pointer.update(node)
+    return out
 
 if __name__ == '__main__':
     main()

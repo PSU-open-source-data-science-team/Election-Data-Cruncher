@@ -7,6 +7,13 @@ from urllib.request import urlopen
 from os.path import basename
 # main script
 
+def copy_headers(source_folder, destination):
+    if not os.path.exists(source_folder):
+        raise FileNotFoundError(f"Source folder path missing: {source_folder}")
+    if not os.path.exists(destination):
+        raise FileNotFoundError(f"Destination folder path missing: "
+                                f"{destination}")
+    os.system(f'cp {source_folder}/* {destination}/')
 
 def stream_file(folder, url):
     '''
