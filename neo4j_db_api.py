@@ -121,21 +121,21 @@ class Neo4jDB:
                   'return n' % (source_id, destination_id, rel)
         self.run_query(command)
 
-    def get_node_id_by_name(self, name, label=None):
+    def get_node_id_by_prop(self, prop, label=None):
         '''
         Match a name property on a node and return its ID
-        :param name: Name property of node
+        :param prop: property of node
         :return: neo4j ID of matching node
         '''
         command = "MATCH (n"
         if label is not None:
             command += f":{label}"
-        command += "{Name:'%s'}) return ID(n)" % name
+        command += "{%s}) return ID(n)" % prop
         result = self.run_query(command)
         try:
             return result.data()[0]['ID(n)']
         except Exception:
-            raise Neo4jAPIException(f"Neo4j get_node_id_by_name failed. "
+            raise Neo4jAPIException(f"Neo4j get_node_id_by_prop failed. "
                                     f"Command: {command}")
 
     def create_node_with_rel_to_id(self, label, properties, relationship, id,

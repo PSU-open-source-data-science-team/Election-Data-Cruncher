@@ -55,12 +55,16 @@ def main():
 
     # start docker instance
     neo4j_docker_db = db_docker.Neo4jDockerDB()
+
     # create a node to store which files have been imported
     id = None
     try:
-        id = neo4j_docker_db.get_node_id_by_name("Imported", "Imported")
+        id = neo4j_docker_db.get_node_id_by_prop(" ", "Imported")
     except db_docker.Neo4jAPIException:
-        id = neo4j_docker_db.create_node("Imported", f"Name:'Imported'")
+        id = neo4j_docker_db.create_node("Imported", " ")
+
+    # import to nodes
+    fec_data_to_neo4j(main_data, neo4j_docker_db, id)
 
 
 def files_to_data(download_files, split_number, dir):
@@ -78,6 +82,7 @@ def files_to_data(download_files, split_number, dir):
 
         if os.path.exists(os.path.abspath(hfile)):
             fields = None
+            data = []
             with open(hfile, 'r') as csvfile:
                 # creating a csv reader object
                 csvreader = csv.reader(csvfile)
@@ -89,27 +94,23 @@ def files_to_data(download_files, split_number, dir):
                 dfile = dir + "/it" + f"{base}.txt"
             with open(dfile, 'r') as datafile:
                 lines = datafile.readlines()
-                data = []
                 for line in lines:
                     # badly formatted file correction, remove last |
                     if base == "oppexp":
                         line = line.rstrip()[:-1]
                     data_count = len(line.rstrip().split("|"))
                     flen = len(fields)
+                    # if the number of fields doesn't match the number of data
+                    # records, raise an exception
                     if len(fields) != data_count:
-                        print(line)
-                        print(fields)
-                        raise IOError(f"Data import lenth mismatch "
-                                      f"({data_count} vs {flen}) between:\n"
-                                      f"{line}\nand\n{fields}")
-                    line = line.replace('|', ',')
-                    data.append(line)
+                        raise Exception(f"Data import lenth mismatch "
+                                        f"({data_count} vs {flen}) between:\n"
+                                        f"{line}\nand\n{fields}")
+                    data.append(line.rstrip().split("|"))
             main_data.update(fec_data_to_dict(data, fields, base))
         else:
             raise Exception(f"Header file not found: {hfile}")
     return main_data
-
-
 
 
 def fec_data_to_dict(data, header, base):
@@ -123,40 +124,40 @@ def fec_data_to_dict(data, header, base):
     pointer = None
     # all candidates file - summary financial information for each candidate
     if base == "weball":
-        out['all candidates'] = {}
+        out['all candidates'] = []
         pointer = out['all candidates']
     # candidate master file - summary financial information for each candidate
     elif base == "cn":
-        out['candidate master'] = {}
+        out['candidate master'] = []
         pointer = out['candidate master']
     # link between candidate info to info about their committee
     elif base == "ccl":
-        out['candidate committee linkage'] = {}
+        out['candidate committee linkage'] = []
         pointer = out['candidate committee linkage']
     # summary financial information for each campaign committee
     elif base == "webl":
-        out['current campaigns'] = {}
+        out['current campaigns'] = []
         pointer = out['current campaigns']
     # one record for each committee registered with the FEC
     elif base == "cm":
-        out['committee master'] = {}
+        out['committee master'] = []
         pointer = out['committee master']
     # overall receipts and disbursements for each PAC and party committee
     elif base == "webk":
-        out['pac summary'] = {}
+        out['pac summary'] = []
         pointer = out['pac summary']
     # expenditure made by a PAC, party committee, candidate committee,
     # or other federal committee
     elif base == "pas2":
-        out['contributions'] = {}
+        out['contributions'] = []
         pointer = out['contributions']
     # transactions between committees
     elif base == "oth":
-        out['intercommittee transactions'] = {}
+        out['intercommittee transactions'] = []
         pointer = out['intercommittee transactions']
     # reported FEC disbursements
     elif base == "oppexp":
-        out['operating expenditures'] = {}
+        out['operating expenditures'] = []
         pointer = out['operating expenditures']
     else:
         raise Exception(f"Unable to determine FEC file type: {base}")
@@ -165,9 +166,40 @@ def fec_data_to_dict(data, header, base):
     for line in data:
         node = {}
         for count, key in enumerate(header):
-            node[key] = line[count]
-        pointer.update(node)
+            val = line[count]
+            try:
+                val = float(val)
+            except ValueError:
+                try:
+                    val = int(val)
+                except ValueError:
+                    # remove characters that will cause issues later
+                    val = val.replace("\"", '').replace("\'", '')
+                    val = f'"{val}"'
+            node[key] = val
+        pointer.append(node)
     return out
+
+
+def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
+    total = 0
+    for count, cand in enumerate(main_data['all candidates']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.create_node("Candidate", props)
+        total = count
+    print(f"Created {total} candidate nodes.")
+    for count, cand in enumerate(main_data['candidate master']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.get_node_id_by_prop(f"CAND_ID:{cand['CAND_ID']}",
+                                     'Candidate')
+        neo4jobj.create_node_with_rel_to_id("Candidate", props)
+        total = count
+
+
 
 if __name__ == '__main__':
     main()
