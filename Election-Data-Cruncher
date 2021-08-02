@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from FEC_grabber import stream_file, copy_headers
 import db_docker
+from neo4j_db_api import Neo4jAPIException
 import requests
 import os
 from zipfile import ZipFile
 import csv
+import numpy as np
 
 
 def main():
@@ -166,15 +168,17 @@ def fec_data_to_dict(data, header, base):
     for line in data:
         node = {}
         for count, key in enumerate(header):
-            val = line[count]
-            try:
-                val = float(val)
-            except ValueError:
+            if str(line[count]).isdigit():
+                val = np.int64(line[count])
+            else:
                 try:
-                    val = int(val)
+                    val = float(line[count])
+                    # skip huge numbers
+                    if val == float('inf'):
+                        val = 0
                 except ValueError:
                     # remove characters that will cause issues later
-                    val = val.replace("\"", '').replace("\'", '')
+                    val = line[count].replace("\"", '').replace("\'", '')
                     val = f'"{val}"'
             node[key] = val
         pointer.append(node)
@@ -182,7 +186,9 @@ def fec_data_to_dict(data, header, base):
 
 
 def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
+    print("Importing data to neo4j...")
     total = 0
+    # weball
     for count, cand in enumerate(main_data['all candidates']):
         # format dict string to neo4j property input
         props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
@@ -190,15 +196,116 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
         neo4jobj.create_node("Candidate", props)
         total = count
     print(f"Created {total} candidate nodes.")
+    # cm
+    for count, cand in enumerate(main_data['committee master']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.create_node("Committee", props)
+        total = count
+    print(f"Created {total} committee nodes.")
+    # webl - AKA current committees
+    for count, cand in enumerate(main_data['current campaigns']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.create_node("Committee", props)
+        total = count
+    print(f"Created {total} committee nodes.")
+    # cn
     for count, cand in enumerate(main_data['candidate master']):
         # format dict string to neo4j property input
         props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
         props = props.replace('\\', '')
-        neo4jobj.get_node_id_by_prop(f"CAND_ID:{cand['CAND_ID']}",
-                                     'Candidate')
-        neo4jobj.create_node_with_rel_to_id("Candidate", props)
+        cid = neo4jobj.create_node("Candidate", props)
+        party_id = None
+        # create party node
+        try:
+            party_id = neo4jobj.get_node_id_by_prop(
+                f"Name:{cand['CAND_PTY_AFFILIATION']}",
+                'Party')
+        except (Neo4jAPIException, TypeError):
+            party_id = neo4jobj.create_node("Party",
+                                            f"Name:{cand['CAND_PTY_AFFILIATION']}")
+            neo4jobj.create_relationship_by_id(party_id, cid, "PARTY_OF")
         total = count
-
+    print(f"Created {total} candidate nodes.")
+    # ccl - links
+    for count, cand in enumerate(main_data['candidate committee linkage']):
+        # apparently FEC files can be missing current year candidates?
+        # so let's wrap things in a try/catch and just print failures
+        try:
+            candid = neo4jobj.get_node_id_by_prop(f"CAND_ID:{cand['CAND_ID']}",
+                                                  'Candidate')
+        except (Neo4jAPIException, TypeError):
+            # data is missing candidate or is not current, skip it.
+            continue
+        try:
+            cid = cand.get('CAND_ID')
+            # if cid is None:
+            #    print("Missing CID: ", cand)
+            #    continue
+            cmte = neo4jobj.get_node_id_by_prop(f"CAND_ID:{cid}",
+                                                'Committee')
+        except (Neo4jAPIException, TypeError):
+            cid = cand.get('CMTE_ID')
+            try:
+                cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                    'Committee')
+            except (Neo4jAPIException, TypeError):
+                # can't find candidate or committee match because of data
+                # integrity issues. Skip it then.
+                continue
+        neo4jobj.create_relationship_by_id(cmte, candid, "COMMITTEE_OF")
+        total = count
+    print(f"Created {total} candidate nodes.")
+    # webk
+    for count, cand in enumerate(main_data['pac summary']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.create_node("PAC", props)
+        total = count
+    print(f"Created {total} PAC nodes.")
+    # pas2
+    for count, cand in enumerate(main_data['contributions']):
+        # format dict string to neo4j property input
+        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        cont = neo4jobj.create_node("Contribution", props)
+        cid = cand.get('CMTE_ID')
+        try:
+            cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                'Committee')
+        except (Neo4jAPIException, TypeError):
+            # can't find candidate or committee match because of data
+            # integrity issues. Skip it then.
+            continue
+        neo4jobj.create_relationship_by_id(cont, cmte, "CONTRIBUTION_TO")
+        total = count
+        if count > 10000:
+            break
+    print(f"Created {total} PAC contribution nodes.")
+    # oth
+    for count, t in enumerate(main_data['intercommittee transactions']):
+        # format dict string to neo4j property input
+        props = str(t).replace('{', '').replace('}', '').replace("\'", '')
+        props = props.replace('\\', '')
+        neo4jobj.create_node("Transaction", props)
+        cid = cand.get('CMTE_ID')
+        try:
+            cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                'Committee')
+        except (Neo4jAPIException, TypeError):
+            print("Couldnt find cmte 2", cid)
+            # can't find candidate or committee match because of data
+            # integrity issues. Skip it then.
+            continue
+        neo4jobj.create_relationship_by_id(cont, cmte, "CONTRIBUTION_TO")
+        total = count
+        if count > 10000:
+            break
+    print(f"Created {total} Transaction nodes.")
 
 
 if __name__ == '__main__':

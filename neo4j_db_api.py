@@ -117,7 +117,7 @@ class Neo4jDB:
                   'WHERE ID(n) = %d ' \
                   'MATCH (m) ' \
                   'WHERE ID(m) = %d ' \
-                  'CREATE (n) - [:%s] -> (m) ' \
+                  'MERGE (n) - [:%s] -> (m) ' \
                   'return n' % (source_id, destination_id, rel)
         self.run_query(command)
 
