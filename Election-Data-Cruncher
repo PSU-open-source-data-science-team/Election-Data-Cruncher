@@ -297,7 +297,6 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
             cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
                                                 'Committee')
         except (Neo4jAPIException, TypeError):
-            print("Couldnt find cmte 2", cid)
             # can't find candidate or committee match because of data
             # integrity issues. Skip it then.
             continue

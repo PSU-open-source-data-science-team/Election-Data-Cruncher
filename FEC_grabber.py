@@ -15,6 +15,7 @@ def copy_headers(source_folder, destination):
                                 f"{destination}")
     os.system(f'cp {source_folder}/* {destination}/')
 
+
 def stream_file(folder, url):
     '''
     create a new folder and download input file to that folder
