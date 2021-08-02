@@ -291,8 +291,8 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
         # format dict string to neo4j property input
         props = str(t).replace('{', '').replace('}', '').replace("\'", '')
         props = props.replace('\\', '')
-        neo4jobj.create_node("Transaction", props)
-        cid = cand.get('CMTE_ID')
+        tid = neo4jobj.create_node("Transaction", props)
+        cid = t.get('CMTE_ID')
         try:
             cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
                                                 'Committee')
@@ -301,7 +301,7 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
             # can't find candidate or committee match because of data
             # integrity issues. Skip it then.
             continue
-        neo4jobj.create_relationship_by_id(cont, cmte, "CONTRIBUTION_TO")
+        neo4jobj.create_relationship_by_id(tid, cmte, "CONTRIBUTION_TO")
         total = count
         if count > 10000:
             break
