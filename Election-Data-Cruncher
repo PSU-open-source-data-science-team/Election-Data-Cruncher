@@ -119,6 +119,7 @@ def fec_data_to_dict(data, header, base):
     '''
     Organize data into dict to determine which kind of nodes to create
     :param data: array of data corresponding to a single line
+    :param header: array of keys to identify data
     :param base: name to determine which kind of data is being imported
     :return: dict of dicts with organized metadata
     '''
@@ -186,6 +187,14 @@ def fec_data_to_dict(data, header, base):
 
 
 def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
+    '''
+    This takes the main_data dict, parses it, and uploads it to the neo4j
+    database
+    :param main_data: data dict with FEC data populated with specific keys
+    :param neo4jobj: neo4j object that executes commands
+    :param imported_id: id of imported node to record what has been added
+    :return:
+    '''
     print("Importing data to neo4j...")
     total = 0
     # weball
