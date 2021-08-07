@@ -7,11 +7,25 @@ import os
 from zipfile import ZipFile
 import csv
 import numpy as np
+import argparse
+import subprocess
 
 
 def main():
     # dir to store files
     dir = "./FEC_Election_Data"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--clean", help="Remove temportary "
+                        "files and container.",
+                        action="store_true")
+    args = parser.parse_args()
+
+    # clean if -c arg included
+    if args.clean:
+        # remove data folder
+        subprocess.call(['sh', './cleanup.sh'])
+
     # files to download
     download_files = \
         ['https://www.fec.gov/files/bulk-downloads/2022/weball22.zip',
