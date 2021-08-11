@@ -7,7 +7,7 @@ Daniel Foland - dafoland@pdx.edu
 This project is a backend framework for working with federal election data. The data retrieval, database creation, and import are automated to serve as both a simple and powerful resource for a frontend developer. The included API may be used to access the FEC information within the system.
 
 ## Project Scope
-This project automates pulling and processing of an [FEC dataset](https://www.fec.gov/data/browse-data/?tab=bulk-data)
+This project automates pulling and processing of the 2021 [FEC dataset](https://www.fec.gov/data/browse-data/?tab=bulk-data)
 
 It will use a scripted importer in Python that will download the FEC data, and access it from the local filesystem. 
 
