@@ -18,6 +18,9 @@ A text report will be generated and display the output of a variety of pre-selec
 # Project Environment
 Linux/OSX operating system with Python 3, Docker, and access to install python packages (neo4j, etc).
 
+# Project License
+[GNU v3.0](https://github.com/PSU-open-source-data-science-team/Election-Data-Cruncher/blob/main/LICENSE)
+
 # Installation
 Dowload the repository:
 > git clone https://github.com/PSU-open-source-data-science-team/Election-Data-Cruncher.git
