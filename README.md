@@ -1,6 +1,6 @@
 # Election-Data-Cruncher
 
-Team Members:
+# Team Members
 Daniel Foland - dafoland@pdx.edu
 
 # Project Intent
