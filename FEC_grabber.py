@@ -7,7 +7,14 @@ from urllib.request import urlopen
 from os.path import basename
 # main script
 
+
 def copy_headers(source_folder, destination):
+    '''
+    copy headers from source to dest folter
+    :param source_folder: folder to copy from
+    :param destination: folder to copy files to
+    :return: None
+    '''
     if not os.path.exists(source_folder):
         raise FileNotFoundError(f"Source folder path missing: {source_folder}")
     if not os.path.exists(destination):
