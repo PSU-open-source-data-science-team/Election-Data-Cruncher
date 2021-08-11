@@ -41,12 +41,12 @@ Clean up the container and temp files:
 The script will automatically download FEC data, bring up the container, import the data, and run some example graph algorithims. 
 
 # Project Schedule
-Week 1 - Develop script to download FEC data, set up docker instance, basic neo4j API
-Week 2 - Data importing, expand API to facilitate import
-Week 3 - Demo skeleton project
-Week 4 - Expand API for data retrieval, implement graph algorithms (apoc?)
-Week 5 - Expand preselected data processing for users to make simple queries, debug, adapt report generation
-Week 6 - MVP commit
-Week 7 - Debug, polish, expand, document
-Wwek 8 - Final commit
+1. Week 1 - Develop script to download FEC data, set up docker instance, basic neo4j API
+1. Week 2 - Data importing, expand API to facilitate import
+1. Week 3 - Demo skeleton project
+1. Week 4 - Expand API for data retrieval, implement graph algorithms (apoc?)
+1. Week 5 - Expand preselected data processing for users to make simple queries, debug, adapt report generation
+1. Week 6 - MVP commit
+1. Week 7 - Debug, polish, expand, document
+1. Week 8 - Final commit
 
