@@ -10,14 +10,23 @@ import numpy as np
 import argparse
 import subprocess
 
+# dir to store files
+dir = "./FEC_Election_Data"
 
-def main():
-    # dir to store files
-    dir = "./FEC_Election_Data"
 
+def parse_args():
+    '''
+    Detect -c or --clean to remove the temp data dir and stop container
+    Detect -q or --quick to limit the size of data import for quicker run time
+    :return: args object
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--clean", help="Remove temportary "
                         "files and container.",
+                        action="store_true")
+    parser.add_argument("-q", "--quick",
+                        help="Limit record imports for a faster bringup time "
+                             "but fewer imported data records.",
                         action="store_true")
     args = parser.parse_args()
 
@@ -25,6 +34,15 @@ def main():
     if args.clean:
         # remove data folder
         subprocess.call(['sh', './cleanup.sh'])
+        print("Finished cleaning, exiting...")
+        exit()
+    return args
+
+
+def main():
+    # parse input args and store quick arg for data import count restrictions
+    args = parse_args()
+    quick = args.quick
 
     # files to download
     download_files = \
@@ -80,7 +98,7 @@ def main():
         id = neo4j_docker_db.create_node("Imported", " ")
 
     # import to nodes
-    fec_data_to_neo4j(main_data, neo4j_docker_db, id)
+    fec_data_to_neo4j(main_data, neo4j_docker_db, id, quick)
 
 
 def files_to_data(download_files, split_number, dir):
@@ -200,7 +218,7 @@ def fec_data_to_dict(data, header, base):
     return out
 
 
-def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
+def fec_data_to_neo4j(main_data, neo4jobj, imported_id, quick):
     '''
     This takes the main_data dict, parses it, and uploads it to the neo4j
     database
@@ -306,7 +324,7 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
             continue
         neo4jobj.create_relationship_by_id(cont, cmte, "CONTRIBUTION_TO")
         total = count
-        if count > 10000:
+        if quick and count > 10000:
             break
     print(f"Created {total} PAC contribution nodes.")
     # oth
@@ -323,9 +341,9 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id):
             # can't find candidate or committee match because of data
             # integrity issues. Skip it then.
             continue
-        neo4jobj.create_relationship_by_id(tid, cmte, "CONTRIBUTION_TO")
+        neo4jobj.create_relationship_by_id(cmte, tid, "CONTRIBUTION_TO")
         total = count
-        if count > 10000:
+        if quick and count > 10000:
             break
     print(f"Created {total} Transaction nodes.")
 
