@@ -51,7 +51,7 @@ Schedule by week:
 1. Debug, polish, expand, document
 1. Final commit
 
-## Accoldates
+## Accolades
 Without these technologies and the hard work by their respective authors, this project would not be possible
 1. The Neo4j database and Python connector
 1. Docker
