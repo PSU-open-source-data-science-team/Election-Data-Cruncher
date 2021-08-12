@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import unittest
-import neobolt
 import warnings
 from db_docker import Neo4jDockerDB
 from neo4j_db_api import Neo4jAPIException
@@ -18,7 +17,6 @@ class TestDatabase(unittest.TestCase):
     def test_1_do_stuff(self):
         # create and start neo4j container
         neo4j_docker_db = Neo4jDockerDB()
-        neo4j_docker_db.start()
         # teardown db when completed
         neo4j_docker_db.persist = False
 
@@ -26,18 +24,19 @@ class TestDatabase(unittest.TestCase):
                         "database HTTP response detected")
 
         result = neo4j_docker_db.run_query("MATCH (n) return n")
-        self.assertEqual(result.data()['n'], "", "Executed query on empty db")
+        self.assertEqual(result.data(), [],
+                         "Executed query on empty db")
 
         # test create node
         id = neo4j_docker_db.create_node("Test", "val:5")
 
-        self.assertTrue(id, "ID returned from create node")
+        self.assertEqual(id, 0, "Initial ID returned from create node")
 
         # try to get same id by property
         self.assertEqual(
-            neo4j_docker_db.get_node_id_by_prop("val: 5", id,
-                                                "Found node with matching "
-                                                "properties"))
+            neo4j_docker_db.get_node_id_by_prop("val: 5"),
+            id,
+            "Found node with matching properties")
 
         # create another test node
         other_id = neo4j_docker_db.create_node("Test", "val : 10")
@@ -52,6 +51,11 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(
             neo4j_docker_db.run_query("MATCH (n) - [:LINK] - (p) "
                                       "WHERE ID(n) = %d "
-                                      "return count(p)").data()['count(p)'],
+                                      "return count(p)" % id
+                                      ).data()[0]['count(p)'],
             2,
             "Links created properly")
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -11,6 +11,9 @@ class Neo4jDockerDB(Neo4jDB):
     available to the api class
     '''
     def __init__(self):
+        '''
+        Initialize and automatically start docker db
+        '''
         # keep container alive when script is completed
         self.persist = True
         self.client = docker.from_env()
@@ -57,8 +60,9 @@ class Neo4jDockerDB(Neo4jDB):
 
     def get_container(self):
         '''
-
-        :return:
+        fetch the existing container info if it already exists, or just
+        return the reference to the container created
+        :return: container object reference
         '''
         if hasattr(self, 'container'):
             return self.container

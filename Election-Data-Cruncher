@@ -473,7 +473,7 @@ def run_interesting_queries(neo4jobj):
     print("Total amount of DEM donations in database: ")
     print(neo4jobj.get_donations_total('DEM'))
 
-    
+
 
 
 
