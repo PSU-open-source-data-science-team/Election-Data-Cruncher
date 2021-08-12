@@ -22,7 +22,7 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--clean", help="Remove temportary "
-                        "files and container.",
+                                              "files and container.",
                         action="store_true")
     parser.add_argument("-q", "--quick",
                         help="Limit record imports for a faster bringup time "
@@ -229,66 +229,126 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id, quick):
     '''
     print("Importing data to neo4j...")
     total = 0
-    # weball
-    for count, cand in enumerate(main_data['all candidates']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        neo4jobj.create_node("Candidate", props)
-        total = count
-    print(f"Created {total} candidate nodes.")
-    # cm
-    for count, cand in enumerate(main_data['committee master']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        neo4jobj.create_node("Committee", props)
-        total = count
-    print(f"Created {total} committee nodes.")
+    # weball file
+    if not get_imported(imported_id, neo4jobj, "weball"):
+        # weball
+        for count, cand in enumerate(main_data['all candidates']):
+            # format dict string to neo4j property input
+            props = format_props(cand)
+            neo4jobj.create_node("Candidate", props)
+            total = count
+        print(f"Created {total} candidate nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "weball", True)
+    else:
+        print("Skipping weball, already imported.")
+
+    # cm file
+    if not get_imported(imported_id, neo4jobj, "cm"):
+        for count, cand in enumerate(main_data['committee master']):
+            # format dict string to neo4j property input
+            props = format_props(cand)
+            neo4jobj.create_node("Committee", props)
+            total = count
+        print(f"Created {total} committee nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "cm", True)
+    else:
+        print("Skipping cm, already imported.")
+
     # webl - AKA current committees
-    for count, cand in enumerate(main_data['current campaigns']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        neo4jobj.create_node("Committee", props)
-        total = count
-    print(f"Created {total} committee nodes.")
-    # cn
-    for count, cand in enumerate(main_data['candidate master']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        cid = neo4jobj.create_node("Candidate", props)
-        party_id = None
-        # create party node
-        try:
-            party_id = neo4jobj.get_node_id_by_prop(
-                f"Name:{cand['CAND_PTY_AFFILIATION']}",
-                'Party')
-        except (Neo4jAPIException, TypeError):
-            party_id = neo4jobj.create_node("Party",
-                                            f"Name:{cand['CAND_PTY_AFFILIATION']}")
-            neo4jobj.create_relationship_by_id(party_id, cid, "PARTY_OF")
-        total = count
-    print(f"Created {total} candidate nodes.")
-    # ccl - links
-    for count, cand in enumerate(main_data['candidate committee linkage']):
-        # apparently FEC files can be missing current year candidates?
-        # so let's wrap things in a try/catch and just print failures
-        try:
-            candid = neo4jobj.get_node_id_by_prop(f"CAND_ID:{cand['CAND_ID']}",
-                                                  'Candidate')
-        except (Neo4jAPIException, TypeError):
-            # data is missing candidate or is not current, skip it.
-            continue
-        try:
-            cid = cand.get('CAND_ID')
-            # if cid is None:
-            #    print("Missing CID: ", cand)
-            #    continue
-            cmte = neo4jobj.get_node_id_by_prop(f"CAND_ID:{cid}",
-                                                'Committee')
-        except (Neo4jAPIException, TypeError):
+    if not get_imported(imported_id, neo4jobj, "webl"):
+        for count, cand in enumerate(main_data['current campaigns']):
+            # format dict string to neo4j property input
+            props = str(cand).replace('{', '').replace('}', '').replace("\'",
+                                                                        '')
+            props = props.replace('\\', '')
+            neo4jobj.create_node("Committee", props)
+            total = count
+        print(f"Created {total} committee nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "webl", True)
+    else:
+        print("Skipping webl, already imported.")
+
+    # cn - candidate file
+    if not get_imported(imported_id, neo4jobj, "cn"):
+        for count, cand in enumerate(main_data['candidate master']):
+            # format dict string to neo4j property input
+            props = format_props(cand)
+            cid = neo4jobj.create_node("Candidate", props)
+            party_id = None
+            # create party node
+            try:
+                party_id = neo4jobj.get_node_id_by_prop(
+                    f"Name:{cand['CAND_PTY_AFFILIATION']}",
+                    'Party')
+            except (Neo4jAPIException, TypeError):
+                party_id = neo4jobj.create_node("Party",
+                                                f"Name:{cand['CAND_PTY_AFFILIATION']}")
+                neo4jobj.create_relationship_by_id(party_id, cid, "PARTY_OF")
+            total = count
+        print(f"Created {total} candidate nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "cn", True)
+    else:
+        print("Skipping cn, already imported.")
+
+    # ccl - links file
+    if not get_imported(imported_id, neo4jobj, "ccl"):
+        for count, cand in enumerate(main_data['candidate committee linkage']):
+            # apparently FEC files can be missing current year candidates?
+            # so let's wrap things in a try/catch and just print failures
+            try:
+                candid = neo4jobj.get_node_id_by_prop(
+                    f"CAND_ID:{cand['CAND_ID']}",
+                    'Candidate')
+            except (Neo4jAPIException, TypeError):
+                # data is missing candidate or is not current, skip it.
+                continue
+            try:
+                # get the committee this candidate is linked to
+                cid = cand.get('CAND_ID')
+                cmte = neo4jobj.get_node_id_by_prop(f"CAND_ID:{cid}",
+                                                    'Committee')
+            except (Neo4jAPIException, TypeError):
+                # couldn't find it, try getting the candidate node committee
+                # id data instead
+                cid = cand.get('CMTE_ID')
+                try:
+                    cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                        'Committee')
+                except (Neo4jAPIException, TypeError):
+                    # can't find candidate or committee match because of data
+                    # integrity issues. Skip it then.
+                    continue
+            neo4jobj.create_relationship_by_id(cmte, candid, "COMMITTEE_OF")
+            total = count
+        print(f"Created {total} committee/candidate links.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "ccl", True)
+    else:
+        print("Skipping ccl, already imported.")
+
+    # webk - pac summary file
+    if not get_imported(imported_id, neo4jobj, "webk"):
+        for count, cand in enumerate(main_data['pac summary']):
+            # format dict string to neo4j property input
+            props = format_props(cand)
+            neo4jobj.create_node("PAC", props)
+            total = count
+        print(f"Created {total} PAC nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "webk", True)
+    else:
+        print("Skipping webk, already imported.")
+
+    # pas2 - contributions file
+    if not get_imported(imported_id, neo4jobj, "pas2"):
+        for count, cand in enumerate(main_data['contributions']):
+            # format dict string to neo4j property input
+            props = format_props(cand)
+            cont = neo4jobj.create_node("Contribution", props)
             cid = cand.get('CMTE_ID')
             try:
                 cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
@@ -297,55 +357,95 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id, quick):
                 # can't find candidate or committee match because of data
                 # integrity issues. Skip it then.
                 continue
-        neo4jobj.create_relationship_by_id(cmte, candid, "COMMITTEE_OF")
-        total = count
-    print(f"Created {total} candidate nodes.")
-    # webk
-    for count, cand in enumerate(main_data['pac summary']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        neo4jobj.create_node("PAC", props)
-        total = count
-    print(f"Created {total} PAC nodes.")
-    # pas2
-    for count, cand in enumerate(main_data['contributions']):
-        # format dict string to neo4j property input
-        props = str(cand).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        cont = neo4jobj.create_node("Contribution", props)
-        cid = cand.get('CMTE_ID')
-        try:
-            cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
-                                                'Committee')
-        except (Neo4jAPIException, TypeError):
-            # can't find candidate or committee match because of data
-            # integrity issues. Skip it then.
-            continue
-        neo4jobj.create_relationship_by_id(cont, cmte, "CONTRIBUTION_TO")
-        total = count
-        if quick and count > 10000:
-            break
-    print(f"Created {total} PAC contribution nodes.")
-    # oth
-    for count, t in enumerate(main_data['intercommittee transactions']):
-        # format dict string to neo4j property input
-        props = str(t).replace('{', '').replace('}', '').replace("\'", '')
-        props = props.replace('\\', '')
-        tid = neo4jobj.create_node("Transaction", props)
-        cid = t.get('CMTE_ID')
-        try:
-            cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
-                                                'Committee')
-        except (Neo4jAPIException, TypeError):
-            # can't find candidate or committee match because of data
-            # integrity issues. Skip it then.
-            continue
-        neo4jobj.create_relationship_by_id(cmte, tid, "CONTRIBUTION_TO")
-        total = count
-        if quick and count > 10000:
-            break
-    print(f"Created {total} Transaction nodes.")
+            neo4jobj.create_relationship_by_id(cmte, cont, "CONTRIBUTION_TO")
+            total = count
+            if quick and count > 10000:
+                break
+        print(f"Created {total} PAC contribution nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "pas2", True)
+    else:
+        print("Skipping pas2, already imported.")
+
+    # oth - transactions file
+    if not get_imported(imported_id, neo4jobj, "oth"):
+        for count, t in enumerate(main_data['intercommittee transactions']):
+            # format dict string to neo4j property input
+            props = format_props(t)
+            tid = neo4jobj.create_node("Transaction", props)
+            cid = t.get('CMTE_ID')
+            try:
+                cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                    'Committee')
+            except (Neo4jAPIException, TypeError):
+                # can't find candidate or committee match because of data
+                # integrity issues. Skip it then.
+                continue
+            neo4jobj.create_relationship_by_id(cmte, tid, "CONTRIBUTION_TO")
+            total = count
+            if quick and count > 10000:
+                break
+        print(f"Created {total} transaction nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "oth", True)
+    else:
+        print("Skipping oth, already imported.")
+
+    # opp - expenditures file
+    if not get_imported(imported_id, neo4jobj, "opp"):
+        for count, t in enumerate(main_data['operating expenditures']):
+            # format dict string to neo4j property input
+            props = format_props(t)
+            exp = neo4jobj.create_node("Expense", props)
+            # get the committee id
+            cid = t.get('CMTE_ID')
+            try:
+                # fetch the neo4j id for the committee node
+                cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                    'Committee')
+            except (Neo4jAPIException, TypeError):
+                # can't find candidate or committee match because of data
+                # integrity issues. Skip it then.
+                continue
+            # create link between committee and the expense
+            neo4jobj.create_relationship_by_id(exp, cmte, "EXPENSE_OF")
+            total = count
+            # stop at 10000 if quick arg detected
+            if quick and count > 10000:
+                break
+        print(f"Created {total} expense nodes.")
+        # record on the Imported node so we have a record this was processed
+        neo4jobj.set_property_by_id(imported_id, "opp", True)
+    else:
+        print("Skipping opp, already imported.")
+    print("Finished Importing Data.")
+
+
+def format_props(s):
+    '''
+    format the property string by removing characters that cause problems
+    with Cypher syntax
+    :param s: input string to sanitize
+    :return: formatted/sanitized string
+    '''
+    props = str(s).replace('{', '').replace('}', '').replace("\'", '')
+    props = props.replace('\\', '')
+    return props
+
+
+def get_imported(imported_id, neo4jobj, name):
+    '''
+    fetch the data for the imported node
+    :param imported_id: neo4j id of node with 'Imported' label
+    :param neo4jobj: neo4j query object
+    :param neo4jobj: matching dataset to check
+    :return: True if imported, false if not (raises keyerror and is caught)
+    '''
+    data = neo4jobj.get_node_properties_by_id(imported_id)
+    try:
+        return data[name]
+    except KeyError:
+        return False
 
 
 if __name__ == '__main__':

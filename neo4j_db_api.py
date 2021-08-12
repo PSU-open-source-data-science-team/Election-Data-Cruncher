@@ -165,6 +165,40 @@ class Neo4jDB:
         try:
             return result.data()[0]['ID(m)']
         except Exception:
-            print("Command: %s" % command)
-            raise Neo4jAPIException("Neo4j "
-                                    "create_node_with_rel_to_id failed")
+            raise Neo4jAPIException(f"Neo4j create_node_with_rel_to_id failed."
+                                    f" Command: {command}")
+
+    def get_node_properties_by_id(self, id):
+        '''
+        Get properties if the neo4j id is known
+        :param id:
+        :return:
+        '''
+        command = "MATCH (n) " \
+                  "WHERE ID(n) = %d " \
+                  "return n " % id
+        result = self.run_query(command)
+        try:
+            return result.single().data()['n']
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j get_node_properties_by_id failed."
+                                    f" Command: {command}")
+
+    def set_property_by_id(self, id, property, value):
+        '''
+        sets a property of node matching the neo4j id
+        :param id: neo4j id of existing node to set property for
+        :param property: name of property to set
+        :param value: value of property to set
+        :return: new nodal data
+        '''
+        command = f"MATCH (n) " \
+                  f"WHERE ID(n) = {id} " \
+                  f"SET n.{property} = {value} " \
+                  f"RETURN n"
+        result = self.run_query(command)
+        try:
+            return result.single().data()
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j set_property_by_id failed."
+                                    f" Command: {command}")
