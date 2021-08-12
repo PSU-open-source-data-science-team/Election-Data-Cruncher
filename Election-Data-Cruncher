@@ -100,6 +100,9 @@ def main():
     # import to nodes
     fec_data_to_neo4j(main_data, neo4j_docker_db, id, quick)
 
+    # run some example queries after importing data
+    run_interesting_queries(neo4j_docker_db)
+
 
 def files_to_data(download_files, split_number, dir):
     main_data = {}
@@ -335,7 +338,16 @@ def fec_data_to_neo4j(main_data, neo4jobj, imported_id, quick):
         for count, cand in enumerate(main_data['pac summary']):
             # format dict string to neo4j property input
             props = format_props(cand)
-            neo4jobj.create_node("PAC", props)
+            pac = neo4jobj.create_node("PAC", props)
+            cid = cand.get('CMTE_ID')
+            try:
+                cmte = neo4jobj.get_node_id_by_prop(f"CMTE_ID:{cid}",
+                                                    'Committee')
+            except (Neo4jAPIException, TypeError):
+                # can't find candidate or committee match because of data
+                # integrity issues. Skip it then.
+                continue
+            neo4jobj.create_relationship_by_id(pac, cmte, "PAC_OF")
             total = count
         print(f"Created {total} PAC nodes.")
         # record on the Imported node so we have a record this was processed
@@ -446,6 +458,24 @@ def get_imported(imported_id, neo4jobj, name):
         return data[name]
     except KeyError:
         return False
+
+
+def run_interesting_queries(neo4jobj):
+    print("Examples of interesting database queries:")
+    result = neo4jobj.get_top_10_contributions()
+    print("Top ten contributions: ")
+    for line in result:
+        print("Name: ", line['name'],
+              "Committee: ", line['com'],
+              "Party: ", line['pty'],
+              "Contributions ($): ", line['amt'])
+
+    print("Total amount of DEM donations in database: ")
+    print(neo4jobj.get_donations_total('DEM'))
+
+    
+
+
 
 
 if __name__ == '__main__':

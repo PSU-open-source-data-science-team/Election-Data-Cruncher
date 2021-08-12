@@ -202,3 +202,54 @@ class Neo4jDB:
         except Exception:
             raise Neo4jAPIException(f"Neo4j set_property_by_id failed."
                                     f" Command: {command}")
+
+    def get_top_10_contributions(self):
+        command = "MATCH (n:Contribution) " \
+                  "match (c:Committee) " \
+                  "where n.CMTE_ID = c.CMTE_ID " \
+                  "with n,c " \
+                  "ORDER BY n.TRANSACTION_AMT DESC " \
+                  "RETURN n.NAME as name, c.CMTE_NM as com, " \
+                  "c.CMTE_PTY_AFFILIATION as pty, " \
+                  "MAX(n.TRANSACTION_AMT) as amt limit 10"
+        result = self.run_query(command)
+        try:
+            return result.data()
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j get_top_10_contributions failed."
+                                    f" Command: {command}")
+
+    def get_funded_candidates(self):
+        return
+        command = ""
+        result = self.run_query(command)
+        try:
+            return result.data()[0]
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j get_funded_candidates failed."
+                                    f" Command: {command}")
+
+    def get_donations_total(self, party):
+        command = "MATCH (:Committee {CMTE_PTY_AFFILIATION:'%s'}) " \
+                  "– [:CONTRIBUTION_TO] – (n:Contribution) " \
+                  "return sum(n.TRANSACTION_AMT)" % party
+        result = self.run_query(command).data()['sum(n.TRANSACTION_AMT)']
+        try:
+            return result.data()
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j get_donations_total failed."
+                                    f" Command: {command}")
+
+
+    def get_total_contributions(self, party):
+        pass
+
+    def get_committee_ties(self, name):
+        command = "match q= () - [*] - " \
+                  "(:Committee {CMTE_NM:'%s'}) - [*] - () return q" % name
+        result = self.run_query(command)
+        try:
+            return result.data()
+        except Exception:
+            raise Neo4jAPIException(f"Neo4j get_committee_ties failed."
+                                    f" Command: {command}")
