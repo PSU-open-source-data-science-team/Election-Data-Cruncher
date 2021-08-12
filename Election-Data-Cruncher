@@ -450,7 +450,7 @@ def get_imported(imported_id, neo4jobj, name):
     fetch the data for the imported node
     :param imported_id: neo4j id of node with 'Imported' label
     :param neo4jobj: neo4j query object
-    :param neo4jobj: matching dataset to check
+    :param name: matching dataset to check
     :return: True if imported, false if not (raises keyerror and is caught)
     '''
     data = neo4jobj.get_node_properties_by_id(imported_id)
@@ -461,6 +461,12 @@ def get_imported(imported_id, neo4jobj, name):
 
 
 def run_interesting_queries(neo4jobj):
+    '''
+    Run some example queries to demonstrate usage of this framework and
+    print out results
+    :param neo4jobj: neo4j query object
+    :return: None
+    '''
     print("Examples of interesting database queries:")
     result = neo4jobj.get_top_10_contributions()
     print("Top ten contributions: ")
@@ -472,10 +478,8 @@ def run_interesting_queries(neo4jobj):
 
     print("Total amount of DEM donations in database: ")
     print(neo4jobj.get_donations_total('DEM'))
-
-
-
-
+    print("Candidates funded by PAC 'INNOVATION NATION PAC':")
+    print(neo4jobj.get_funded_candidates('INNOVATION NATION PAC'))
 
 
 if __name__ == '__main__':

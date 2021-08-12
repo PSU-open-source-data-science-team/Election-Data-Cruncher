@@ -203,7 +203,13 @@ class Neo4jDB:
             raise Neo4jAPIException(f"Neo4j set_property_by_id failed."
                                     f" Command: {command}")
 
+    # --- Example database specific functions below --- #
     def get_top_10_contributions(self):
+        '''
+        Get the top 10 contribution amounts to a Committee and display info
+        about them
+        :return: dict with keys name, com, pty and amt
+        '''
         command = "MATCH (n:Contribution) " \
                   "match (c:Committee) " \
                   "where n.CMTE_ID = c.CMTE_ID " \
@@ -219,32 +225,43 @@ class Neo4jDB:
             raise Neo4jAPIException(f"Neo4j get_top_10_contributions failed."
                                     f" Command: {command}")
 
-    def get_funded_candidates(self):
-        return
-        command = ""
+    def get_funded_candidates(self, pac_name):
+        '''
+        Find the cadidates funded by input PAC
+        :return:
+        '''
+        command = "MATCH (:PAC {CMTE_NM:'%s'}) - [*] - (:Committee) – [*] –> "\
+                  "(c:Candidate) " \
+                  "return c.CAND_NAME" % pac_name
         result = self.run_query(command)
         try:
-            return result.data()[0]
+            return result.data()[0]['c.CAND_NAME']
         except Exception:
             raise Neo4jAPIException(f"Neo4j get_funded_candidates failed."
                                     f" Command: {command}")
 
     def get_donations_total(self, party):
+        '''
+        Get all the contributions for Committees with party affiliation
+        :param party: party to match contributions with
+        :return: integer total of contributions
+        '''
         command = "MATCH (:Committee {CMTE_PTY_AFFILIATION:'%s'}) " \
                   "– [:CONTRIBUTION_TO] – (n:Contribution) " \
-                  "return sum(n.TRANSACTION_AMT)" % party
-        result = self.run_query(command).data()['sum(n.TRANSACTION_AMT)']
+                  "return sum(n.TRANSACTION_AMT) as amt" % party
+        result = self.run_query(command)
         try:
-            return result.data()
+            return result.data()[0]['amt']
         except Exception:
             raise Neo4jAPIException(f"Neo4j get_donations_total failed."
                                     f" Command: {command}")
 
-
-    def get_total_contributions(self, party):
-        pass
-
     def get_committee_ties(self, name):
+        '''
+        Get the nodes associated with a committee
+        :param name: CMTE_NM of committee node
+        :return: dict of nodes
+        '''
         command = "match q= () - [*] - " \
                   "(:Committee {CMTE_NM:'%s'}) - [*] - () return q" % name
         result = self.run_query(command)
