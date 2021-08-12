@@ -29,10 +29,10 @@ Install require python packages:
 > pip install -r requirements.txt 
 
 OPTIONALLY Run test file to verify functionality:
-> python neo4j_db_api_test.py
+> python3 neo4j_db_api_test.py
 
 Run the program:
-> ./Election-Data-Cruncher
+> ./Election-Data-Cruncher -q
 
 Clean up the container and temp files:
 > ./Election-Data-Cruncher --clean
