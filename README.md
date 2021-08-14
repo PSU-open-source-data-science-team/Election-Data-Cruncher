@@ -40,6 +40,9 @@ Clean up the container and temp files:
 ## Usage
 The script will automatically download FEC data, bring up the container, import the data, and run some example graph algorithims. 
 
+## Validation
+The unit test file ensures the system is in working order. A history of debugging effort is viewable within the commit history insteal of pull requests. 
+
 ## Project Schedule
 Schedule by week:
 1. Develop script to download FEC data, set up docker instance, basic neo4j API
