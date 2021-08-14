@@ -61,11 +61,10 @@ Without these technologies and the hard work by their respective authors, this p
 ## Example Run
 Files downloading:
 
-![image](https://user-images.githubusercontent.com/47869340/129457351-72d9669b-5a66-4ee6-8475-6e1fee56f1cc.png){:height="50%" width="50%"}
+![image](https://user-images.githubusercontent.com/47869340/129457351-72d9669b-5a66-4ee6-8475-6e1fee56f1cc.png)
 Output displayed with example queries:
 
-![image](https://user-images.githubusercontent.com/47869340/129457369-7ea3f99f-4eeb-4bf9-809d-9ec44b0f3cfd.png){:height="50%" width="50%"}
+![image](https://user-images.githubusercontent.com/47869340/129457369-7ea3f99f-4eeb-4bf9-809d-9ec44b0f3cfd.png)
 Graph nodes viewable via the web interface (http://localhost:7474/browser/): 
 
-![image](https://user-images.githubusercontent.com/47869340/129457374-d90a7c91-a221-4917-88f9-cc3a4e22f253.png){:height="50%" width="50%"}
-
+![image](https://user-images.githubusercontent.com/47869340/129457374-d90a7c91-a221-4917-88f9-cc3a4e22f253.png)
