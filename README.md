@@ -73,3 +73,4 @@ Graph nodes viewable via the web interface (http://localhost:7474/browser/):
 ![image](https://user-images.githubusercontent.com/47869340/129457374-d90a7c91-a221-4917-88f9-cc3a4e22f253.png)
 
 # Video Explanation
+https://media.pdx.edu/media/t/1_82m4tj2t
