@@ -40,6 +40,11 @@ def parse_args():
 
 
 def main():
+    '''
+    Download files, extract them locally, start neo4j docker, import data,
+    run some interesting queries
+    :return: None
+    '''
     # parse input args and store quick arg for data import count restrictions
     args = parse_args()
     quick = args.quick
@@ -105,6 +110,14 @@ def main():
 
 
 def files_to_data(download_files, split_number, dir):
+    '''
+    open the data files and copy that information to a dict
+    :param download_files: list of downloaded FEC data files
+    :param split_number: naming convention of current year used to split
+    strings
+    :param dir: local data dir
+    :return: data dict generated from file
+    '''
     main_data = {}
     for file in download_files:
         base = os.path.basename(file).rsplit(split_number)[0]
