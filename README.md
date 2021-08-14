@@ -26,7 +26,7 @@ Dowload the repository:
 > git clone https://github.com/PSU-open-source-data-science-team/Election-Data-Cruncher.git
 
 Install require python packages:
-> pip install -r requirements.txt 
+> pip3 install -r requirements.txt 
 
 OPTIONALLY Run test file to verify functionality:
 > python3 neo4j_db_api_test.py
